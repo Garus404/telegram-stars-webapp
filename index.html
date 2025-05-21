@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Оплата Stars</title>
+  </head>
+  <body>
+    <button id="payButton">Оплатить Stars</button>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      const tg = window.Telegram.WebApp;
+      tg.expand();
+
+      document.getElementById('payButton').addEventListener('click', async () => {
+        console.log("Кнопка нажата");
+
+        const payload = "my_payload_" + Date.now();
+
+        try {
+          const result = await tg.openInvoice({
+            slug: "your_product_slug", // замени на настоящий slug!
+            payload: payload
+          });
+
+          console.log("Успешная оплата", result);
+          _return(result?.data_id, true, null);
+        } catch (e) {
+          console.error("Ошибка:", e);
+          _return(null, false, e.message);
+        }
+      });
+
+      function _return(data_id, success, error) {
+        console.log("Результат:", data_id, success, error);
+      }
+    </script>
+  </body>
+</html>
