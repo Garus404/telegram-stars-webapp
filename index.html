@@ -8,60 +8,67 @@
   <button id="payBtn">Оплатить Stars</button>
 
   <script>
-    // Проверяем, что Web App запускается из Telegram
-    if (!window.Telegram.WebApp) {
+    // Проверяем, что Web App запускается внутри Telegram
+    if (!window.Telegram?.WebApp) {
       console.error("Этот скрипт должен запускаться внутри Telegram Web App!");
     } else {
       const tg = window.Telegram.WebApp;
 
-      console.log("Telegram WebApp инициализирован");
+      console.log("Telegram WebApp инициализирован, версия:", tg.version);
 
       const payBtn = document.getElementById('payBtn');
 
       payBtn.addEventListener('click', () => {
-        console.log("Нажата кнопка оплаты, запускаем процесс...");
+        console.log("Нажата кнопка оплаты, отправляем запрос боту");
 
-        // Здесь имитируем вызов оплаты Stars
-        // В реальном Telegram API используется Telegram.WebApp.showPayment или подобный метод
-        // Но в Stars Web Apps нужно запустить платёж через Telegram API с использованием invoice и т.п.
+        // Отправляем боту данные, чтобы он начал процесс оплаты
+        tg.sendData(JSON.stringify({ action: 'start_payment' }));
 
-        // Для примера — вызов Telegram.WebApp.openInvoice() не существует,
-        // обычно это делается через бота и invoice, а тут мы эмулируем оплату
-
-        // Покажем простое окно с подтверждением оплаты
-        const transactionId = "stars_txn_" + Date.now();
-
-        console.log("Симуляция успешной оплаты, transaction id:", transactionId);
-
-        // Возвращаем данные об оплате через _return
-        // Аргументы: (id транзакции, true = успех, null = без ошибки)
-        _return(transactionId, true, null);
-
-        // Дополнительно можно закрыть WebApp, если нужно
-        // tg.close(); 
+        console.log("Данные отправлены боту, ждем результат...");
       });
 
-      // Заготовка функции _return — Telegram WebApp ожидает её
+      // Функция _return - возвращает результат в Telegram после оплаты
       function _return(data_id, success, error) {
         console.log("Вызвана _return:");
         console.log("  data_id:", data_id);
         console.log("  success:", success);
         console.log("  error:", error);
 
-        // В реальном WebApp обычно используется Telegram.WebApp.sendData или postMessage
-        // Здесь просто вывод в консоль, замени под свои нужды
+        // Формируем объект с результатом
+        const result = {
+          transaction_id: data_id,
+          success: success,
+          error: error,
+        };
 
-        // Если WebApp поддерживает sendData:
-        if (tg.sendData) {
-          const result = {
-            transaction_id: data_id,
-            success: success,
-            error: error,
-          };
-          tg.sendData(JSON.stringify(result));
-          console.log("Данные отправлены в Telegram через sendData");
-        }
+        // Отправляем обратно в Telegram
+        tg.sendData(JSON.stringify(result));
+        console.log("Результат оплаты отправлен в Telegram через sendData");
       }
+
+      // Ждём от бота данные об успешной оплате через событие WebAppData
+      tg.onEvent('web_app_data', (event) => {
+        console.log("Получены данные от бота:", event.data);
+
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.success && data.transaction_id) {
+            console.log("Оплата успешна! Транзакция:", data.transaction_id);
+
+            // Возвращаем результат в Telegram
+            _return(data.transaction_id, true, null);
+
+            // Можно закрыть Web App, если нужно
+            // tg.close();
+          } else if (!data.success && data.error) {
+            console.error("Оплата не удалась:", data.error);
+            _return(null, false, data.error);
+          }
+        } catch (e) {
+          console.error("Ошибка разбора данных от бота:", e);
+        }
+      });
     }
   </script>
 </body>
